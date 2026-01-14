@@ -1,5 +1,5 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../core/constants.dart';
 import 'menu_button.dart';
 
@@ -53,51 +53,138 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                '// TUTORIAL_SEQUENCE_0${_step + 1}',
-                style: GameStyles.labelText.copyWith(color: GameColors.accent),
-              ).animate(key: ValueKey(_step)).fadeIn(),
-              const SizedBox(height: 20),
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  border: Border.all(color: GameColors.accent, width: 2),
-                  shape: BoxShape.circle,
-                  color: GameColors.accent.withOpacity(0.1),
-                ),
-                alignment: Alignment.center,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
                 child: Text(
-                  stepData['icon']!,
-                  style: const TextStyle(fontSize: 60),
+                  '// TUTORIAL_SEQUENCE_0${_step + 1}',
+                  key: ValueKey(_step),
+                  style: GameStyles.labelText.copyWith(color: GameColors.accent),
                 ),
-              )
-                  .animate(key: ValueKey('${_step}_icon'))
-                  .scale(duration: 400.ms, curve: Curves.easeOutBack)
-                  .then()
-                  .shake(hz: 2, offset: const Offset(2, 0)),
-              const SizedBox(height: 40),
-              Text(
-                stepData['title']!,
-                style: GameStyles.glitchTitle.copyWith(fontSize: 24),
-                textAlign: TextAlign.center,
-              ).animate(key: ValueKey('${_step}_title')).fadeIn().slideY(begin: 0.2, end: 0),
+              ),
               const SizedBox(height: 20),
-              Text(
-                stepData['desc']!,
-                style: GameStyles.bodyText.copyWith(height: 1.5, fontSize: 16),
-                textAlign: TextAlign.center,
-              ).animate(key: ValueKey('${_step}_desc')).fadeIn(delay: 200.ms),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, animation) {
+                  return ScaleTransition(
+                    scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+                    child: child,
+                  );
+                },
+                child: _ShakeWidget(
+                  key: ValueKey('${_step}_icon'),
+                  hz: 2,
+                  offset: const Offset(2, 0),
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: GameColors.accent, width: 2),
+                      shape: BoxShape.circle,
+                      color: GameColors.accent.withOpacity(0.1),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      stepData['icon']!,
+                      style: const TextStyle(fontSize: 60),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.2),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Text(
+                  stepData['title']!,
+                  key: ValueKey('${_step}_title'),
+                  style: GameStyles.glitchTitle.copyWith(fontSize: 24),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 20),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  stepData['desc']!,
+                  key: ValueKey('${_step}_desc'),
+                  style: GameStyles.bodyText.copyWith(height: 1.5, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+              ),
               const SizedBox(height: 60),
               MenuButton(
+                key: ValueKey('${_step}_btn'),
                 label: _step < _steps.length - 1 ? 'NEXT_SEQUENCE' : 'INITIALIZE_LINK',
                 onPressed: _nextStep,
                 isPrimary: true,
-              ).animate(key: ValueKey('${_step}_btn')).fadeIn(delay: 400.ms),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ShakeWidget extends StatefulWidget {
+  final Widget child;
+  final double hz;
+  final Offset offset;
+
+  const _ShakeWidget({
+    super.key,
+    required this.child,
+    required this.hz,
+    required this.offset,
+  });
+
+  @override
+  State<_ShakeWidget> createState() => _ShakeWidgetState();
+}
+
+class _ShakeWidgetState extends State<_ShakeWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  final math.Random _random = math.Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: (1000 / widget.hz).round()),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final dx = (_random.nextDouble() * 2 - 1) * widget.offset.dx;
+        final dy = (_random.nextDouble() * 2 - 1) * widget.offset.dy;
+        return Transform.translate(
+          offset: Offset(dx, dy),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }
